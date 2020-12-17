@@ -1,16 +1,15 @@
 from data_set import filepaths
-from utils import utils
-
+from utils import osUtils
 
 def __processEntitysAndRelationSets(entitys,relations,path):
-    for h, r, t in utils.readTriple(path):
+    for h, r, t in osUtils.readTriple(path):
         entitys.add(h)
         entitys.add(t)
         relations.add(r)
 
 def __generateTrainningDate(eid2index,rid2index,opath,path):
     with open(path,'w+') as f:
-        for h,r,t in utils.readTriple(opath):
+        for h,r,t in osUtils.readTriple(opath):
             f.write(eid2index[h]+'\t'+rid2index[r]+'\t'+eid2index[t]+'\n')
 
 def processFBDate():
