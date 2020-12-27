@@ -1,29 +1,31 @@
 from mxnet import nd,autograd,gluon
-from data_set import filepaths
 import mxnet as mx
-from chapter5 import dataloader
-from tqdm import tqdm
+from chapter5 import dataloader#自己刚建的读取数据的py文件
+from data_set import filepaths#自己记录文件地址的py文件
+from utils import mxnetUtils #自己的util库
 
-def normlize(param):
-    return param.norm(ord=2,axis=1,keepdims=True)
-
-class TrainsE(gluon.nn.Block):
-    def __init__(self,entity_len, relation_len, embedding_dim=200, margin=1):
+class TransE(gluon.nn.Block):
+    def __init__(self,n_entity, n_relation, embedding_dim=200, margin=1):
         super().__init__()
-        self.margin=margin
-        self.entity_len=entity_len
-        self.relation_len=relation_len
-        self.embedding_dim = embedding_dim
-        self.e = gluon.nn.Embedding(self.entity_len,embedding_dim)
-        self.r = gluon.nn.Embedding(self.relation_len,embedding_dim)
+        self.margin=margin #(式5-5)中的 m
+        self.n_entity=n_entity #实体的数量
+        self.n_relation=n_relation #关系的数量
+        self.embedding_dim = embedding_dim #embedding的长度
 
-    def __hinge_loss(self, dist_correct, dist_corrupt):
-        a=dist_correct - dist_corrupt + self.margin
-        return nd.maximum(a, 0)
+        # 随机初始化实体的embedding
+        self.e = gluon.nn.Embedding(self.n_entity,embedding_dim)
+        # 随机初始化关系的embedding
+        self.r = gluon.nn.Embedding(self.n_relation,embedding_dim)
 
     def batch_norm(self):
         for param in self.params:
-            param=normlize(param)
+            param=mxnetUtils.normlize(param)
+
+    def net(self,X):
+        x_correct,x_corrupt=X
+        y_correct=self.predict(x_correct)
+        y_corrupt=self.predict(x_corrupt)
+        return self.__hinge_loss(y_correct,y_corrupt)
 
     def predict(self,x):
         h=self.e(x[:, 0])
@@ -32,27 +34,28 @@ class TrainsE(gluon.nn.Block):
         score= h + r - t
         return nd.sum(score**2,axis=1,keepdims=True)**0.5
 
-    def net(self,X):
-        x_correct,x_corrupt=X
-        y_correct=self.predict(x_correct)
-        y_corrupt=self.predict(x_corrupt)
-        return self.__hinge_loss(y_correct,y_corrupt)
+    def __hinge_loss(self, dist_correct, dist_corrupt):
+        a=dist_correct - dist_corrupt + self.margin
+        return nd.maximum(a, 0)
 
-class TrainsH(gluon.nn.Block):
-    def __init__(self,entity_len, relation_len, embedding_dim=200, margin=1):
+
+class TransH(gluon.nn.Block):
+    def __init__(self,n_entity, n_relation, embedding_dim=200, margin=1):
         super().__init__()
         self.margin=margin
-        self.entity_len=entity_len
-        self.relation_len=relation_len
+        self.n_entity=n_entity
+        self.n_relation=n_relation
         self.embedding_dim = embedding_dim
-        self.e = gluon.nn.Embedding(self.entity_len,embedding_dim)
-        self.r = gluon.nn.Embedding(self.relation_len,embedding_dim)
-        self.wr = gluon.nn.Embedding(self.relation_len,embedding_dim)
+        self.e = gluon.nn.Embedding(self.n_entity,embedding_dim)
+        self.r = gluon.nn.Embedding(self.n_relation,embedding_dim)
+
+        # 随机初始化法向量的embedding
+        self.wr = gluon.nn.Embedding(self.n_relation,embedding_dim)
 
 
     def batch_norm(self):
         for param in self.params:
-            param=normlize(param)
+            param=mxnetUtils.normlize(param)
 
     def __Htransfer(self, e, wr):
         norm_wr = wr/wr.norm(ord=2,axis=1,keepdims=True)
@@ -78,21 +81,21 @@ class TrainsH(gluon.nn.Block):
         return self.__hinge_loss(y_correct,y_corrupt)
 
 
-class TrainsR(gluon.nn.Block):
-    def __init__(self,entity_len, relation_len, k_dim=200,r_dim=100, margin=1):
+class TransR(gluon.nn.Block):
+    def __init__(self,n_entity, n_relation, k_dim=200,r_dim=100, margin=1):
         super().__init__()
         self.margin=margin
-        self.entity_len=entity_len
-        self.relation_len=relation_len
+        self.n_entity=n_entity
+        self.n_relation=n_relation
         self.k_dim=k_dim
         self.r_dim=r_dim
-        self.e = gluon.nn.Embedding(self.entity_len,k_dim)
-        self.r = gluon.nn.Embedding(self.relation_len,r_dim)
-        self.wr = gluon.nn.Embedding(self.relation_len,k_dim*r_dim)
+        self.e = gluon.nn.Embedding(self.n_entity,k_dim)
+        self.r = gluon.nn.Embedding(self.n_relation,r_dim)
+        self.wr = gluon.nn.Embedding(self.n_relation,k_dim*r_dim)
 
     def batch_norm(self):
         for param in self.params:
-            param=normlize(param)
+            param=mxnetUtils.normlize(param)
 
     def __Rtransfer(self, e, wr):
         e=e.reshape(-1,1,self.k_dim)
@@ -125,7 +128,7 @@ def train(net,dataLoad,pairs,epochs=20,lr=0.01,batchSize=1024):
     trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
     for e in range(epochs):
         l=0
-        for X in tqdm(dataLoad.iter(pairs,batchSize)):
+        for X in dataLoad.iter(pairs,batchSize):
             with autograd.record():
                 loss= net.net(X)
             loss.backward()
@@ -136,8 +139,8 @@ def train(net,dataLoad,pairs,epochs=20,lr=0.01,batchSize=1024):
 
 
 if __name__ == '__main__':
-    entity, relationShips, pairs = dataloader.readData(filepaths.FB15K_237.TEST)
-    net=TrainsE(len(entity),len(relationShips))
+    entity, relationShips, pairs = dataloader.readData(filepaths.FB15K_237.TRAIN)
+    net=TransE(len(entity),len(relationShips))
     net.collect_params().initialize(mx.init.Xavier())
 
     dataLoad = dataloader.DataIter(entity, relationShips)
