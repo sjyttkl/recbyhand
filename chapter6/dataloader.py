@@ -70,28 +70,16 @@ class DataIter():
             corrupted_datasets.append(corrupted_triple)
         return corrupted_datasets
 
-    def iter(self,recPairs,kgPairs,recBatchSize,kgBatchSize):
+    def iter(self,recPairs,kgPairs,batchSize):
         #传入评分三元组，知识图谱三元组，batch size
-        for i in range(len(recPairs)//recBatchSize):
-            recDataSet = random.sample(recPairs,recBatchSize)
-            kgDataset = random.sample(kgPairs, kgBatchSize)
+        for i in range(len(recPairs)//batchSize):
+            recDataSet = random.sample(recPairs,batchSize)
+            kgDataset = random.sample(kgPairs, batchSize)
             kgDataset_corrupted_datasets = self.__corrupt(kgDataset)
             yield nd.array(recDataSet,dtype=int),nd.array(kgDataset,dtype=int),nd.array(kgDataset_corrupted_datasets,dtype=int)
             #每次迭代返回一批量的评分三元组，以及知识图谱正例采样与负例采样得到的array
 
 if __name__ == '__main__':
-    #entity, relationShips, kgPairs = readKgData(filepaths.Ml_100K.KG)
     users, items, train_set,test_set = readRecData(filepaths.Ml_100K.RATING)
-    #print(kgPairs[:5])
-    #print(recParis[:5])
-
     all_testItems,topKtestSet = testSetForTopKevaluation(test_set)
     print(topKtestSet)
-    # for user in topKtestSet:
-    #     itemList=[[user,item] for item in all_testItems]
-    #     print(itemList)
-    # dataLoader = DataIter(entity,relationShips)
-    # for datas in dataLoader.iter(train_set,kgPairs,recBatchSize=3,kgBatchSize=2):
-    #     print(datas)
-    #     import sys
-    #     sys.exit()

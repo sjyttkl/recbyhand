@@ -3,7 +3,7 @@ from mxnet.gluon import nn
 import mxnet as mx
 import numpy as np
 from utils import mxnetUtils #自己的util库
-from utils import evaluate
+from utils import evaluate #自己的测试库
 from chapter6 import dataloader #自己建立的读取数据的py文件
 from data_set import filepaths as fp #自己记录文件地址的py文件
 
@@ -40,6 +40,7 @@ class CrossCompress(nn.Block):
         e_output = e_output.reshape(-1, self.e_dim) + self.bias_e
         return v_output, e_output
 
+#加入dropout层，可替换掉MKR类中的user_dense1等。
 class DenseLayer(nn.Block):
     def __init__(self,e_dim,dropout_prob):
         super(DenseLayer, self).__init__()
@@ -50,30 +51,25 @@ class DenseLayer(nn.Block):
         return self.drop(self.dense(x))
 
 class MKR(nn.Sequential):
-    def __init__(self, n_user, n_entity, n_relation, e_dim=100, margin=1,L=2,dropout_prob=0.5):
+    def __init__(self, n_user, n_entity, n_relation, e_dim=100, margin=1):
         super().__init__()
         self.e_emb=e_dim
-        self.L = L #层数
         self.margin=margin
         self.u_emb = nn.Embedding(n_user, e_dim)
         self.e_emb = nn.Embedding(n_entity, e_dim)
         self.r_emb = nn.Embedding(n_relation, e_dim)
 
-        self.user_dense1 = DenseLayer(e_dim, dropout_prob)
-        self.user_dense2 = DenseLayer(e_dim, dropout_prob)
-        self.user_dense3 = DenseLayer(e_dim, dropout_prob)
-        self.tail_dense1 = DenseLayer(e_dim, dropout_prob)
-        self.tail_dense2 = DenseLayer(e_dim, dropout_prob)
-        self.tail_dense3 = DenseLayer(e_dim, dropout_prob)
+        self.user_dense1 = nn.Dense(e_dim, activation='relu')
+        self.user_dense2 = nn.Dense(e_dim, activation='relu')
+        self.user_dense3 = nn.Dense(e_dim, activation='relu')
+        self.tail_dense1 = nn.Dense(e_dim, activation='relu')
+        self.tail_dense2 = nn.Dense(e_dim, activation='relu')
+        self.tail_dense3 = nn.Dense(e_dim, activation='relu')
         self.cc_unit1 = CrossCompress(e_dim)
         self.cc_unit2 = CrossCompress(e_dim)
         self.cc_unit3 = CrossCompress(e_dim)
 
         self.BCEloss = gluon.loss.SigmoidBinaryCrossEntropyLoss(from_sigmoid=True)
-
-    def batch_norm(self):
-        for param in self.params:
-            param=mxnetUtils.normlize(param)
 
     def __hinge_loss(self, dist_correct, dist_corrupt):
         a=dist_correct - dist_corrupt + self.margin
@@ -97,7 +93,6 @@ class MKR(nn.Sequential):
         v, h = self.cc_unit2(v, h)
         v, h = self.cc_unit3(v, h)
         return self.rec_predict(u,v)
-
 
     def net(self,X):
         x_rec, x_pos, x_neg=X
@@ -123,7 +118,7 @@ class MKR(nn.Sequential):
         y_ture = nd.array(x_rec[:, 2], dtype=np.float32)
 
         rec_pred = self.rec_predict(u,v)
-        rec_loss =  sum(self.BCEloss(rec_pred, y_ture))
+        rec_loss = sum(self.BCEloss(rec_pred, y_ture))
 
         kg_pos = self.kg_predict(h_pos,r_pos,t_pos)
         kg_neg = self.kg_predict(h_neg,r_neg,t_neg)
@@ -143,14 +138,13 @@ def train(net,dataLoad,recPairs,kgPairs,testSet,epochs=5,lr=0.001,batchSize=1024
     trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
     for e in range(epochs):
         l=0
-        for X in tqdm(dataLoad.iter(recPairs,kgPairs,batchSize,batchSize)):
+        for X in tqdm(dataLoad.iter(recPairs,kgPairs,batchSize)):
             with autograd.record():
                 loss = net.net(X)
             loss.backward()
             trainer.step(batchSize)
-            #net.batch_norm()
             l+=sum(loss).asscalar()
-        print("Epoch {}, average loss:{}".format(e,round(l/len(recPairs)),3))
+        print("Epoch {}, average loss:{}".format(e,round(l/len(recPairs),3)))
         p,r=doEvaluation(net,testSet)
         print("p:{},r:{}".format(round(p,3),round(r,3)))
 

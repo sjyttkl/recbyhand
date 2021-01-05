@@ -3,7 +3,7 @@ from mxnet.gluon import nn
 import mxnet as mx
 import numpy as np
 from utils import mxnetUtils #自己的util库
-from utils import evaluate
+from utils import evaluate #自己的测试库
 from chapter6 import dataloader #自己建立的读取数据的py文件
 from data_set import filepaths as fp #自己记录文件地址的py文件
 
@@ -11,13 +11,11 @@ class CKE(nn.Block):
     def __init__(self, n_user, n_entity, n_relation, e_dim=100, margin=1):
         super().__init__()
         self.margin=margin
-        self.u_emb = nn.Embedding(n_user, e_dim)
-        self.e_emb = nn.Embedding(n_entity, e_dim)
-        self.r_emb = nn.Embedding(n_relation, e_dim)
-        # 随机初始化法向量的embedding
-        self.wr = gluon.nn.Embedding(n_relation,e_dim)
-
-        self.BCEloss = gluon.loss.SigmoidBinaryCrossEntropyLoss(from_sigmoid=True)
+        self.u_emb = nn.Embedding(n_user, e_dim) #用户向量
+        self.e_emb = nn.Embedding(n_entity, e_dim) #实体向量
+        self.r_emb = nn.Embedding(n_relation, e_dim) #关系向量
+        self.wr = gluon.nn.Embedding(n_relation,e_dim)# 超平面法向量
+        self.BCEloss = gluon.loss.SigmoidBCELoss(from_sigmoid=True)
 
     def batch_norm(self):
         for param in self.params:
@@ -57,7 +55,7 @@ class CKE(nn.Block):
         kg_loss = sum(self.__hinge_loss(y_correct,y_corrupt))
         return rec_loss+kg_loss
 
-
+#预测
 def doEvaluation(net,testSet):
     pred = net.rec_predict(nd.array(testSet))
     y_true = [int(t[2]) for t in testSet]
@@ -66,33 +64,30 @@ def doEvaluation(net,testSet):
     r = evaluate.recall(y_true=y_true, y_pred=predictions)
     return p,r
 
-def train(net,dataLoad,recPairs,kgPairs,testSet,epochs=5,lr=0.01,recBatchSize=1024,kgBatchSize=1536):
+def train(net,dataLoad,recPairs,kgPairs,testSet,epochs=5,lr=0.01,batchSize=1024):
     from tqdm import tqdm
     trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
     for e in range(epochs):
         l=0
-        for X in tqdm(dataLoad.iter(recPairs,kgPairs,recBatchSize,kgBatchSize)):
+        for X in tqdm(dataLoad.iter(recPairs,kgPairs,batchSize)):
             with autograd.record():
                 loss = net.net(X)
             loss.backward()
-            trainer.step(kgBatchSize)
+            trainer.step(batchSize)
             net.batch_norm()
             l+=sum(loss).asscalar()
         print("Epoch {}, average loss:{}".format(e,round(l/len(recPairs),3)))
         p,r=doEvaluation(net,testSet)
         print("p:{},r:{}".format(round(p,3),round(r,3)))
 
-
-
-
 if __name__ == '__main__':
+    #加载数据
     entitys, relationShips, kgPairs = dataloader.readKgData(fp.Ml_100K.KG)
     users, items, train_set,test_set = dataloader.readRecData(fp.Ml_100K.RATING)
-
-    dataLoader = dataloader.DataIter(entitys,relationShips)
-
+    #初始化模型
     net = CKE(len(users),len(entitys), len(relationShips))
     net.collect_params().initialize(mx.init.Xavier())
+    # 构建迭代器
     dataLoad = dataloader.DataIter(entitys, relationShips)
-
+    #训练模型
     train(net, dataLoad, train_set, kgPairs, test_set)
