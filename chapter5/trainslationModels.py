@@ -58,7 +58,7 @@ class TransH(gluon.nn.Block):
             param=mxnetUtils.normlize(param)
 
     def __Htransfer(self, e, wr):
-        norm_wr = wr/wr.norm(ord=2,axis=1,keepdims=True)
+        norm_wr = wr/wr.norm(axis=1,keepdims=True)
         return e - nd.sum(e * norm_wr, 1, True) * norm_wr
 
     def __hinge_loss(self, dist_correct, dist_corrupt):
@@ -139,8 +139,8 @@ def train(net,dataLoad,pairs,epochs=20,lr=0.01,batchSize=1024):
 
 
 if __name__ == '__main__':
-    entity, relationShips, pairs = dataloader.readData(filepaths.FB15K_237.TRAIN)
-    net=TransE(len(entity),len(relationShips))
+    entity, relationShips, pairs = dataloader.readData(filepaths.FB15K_237.TEST)
+    net=TransH(len(entity),len(relationShips))
     net.collect_params().initialize(mx.init.Xavier())
 
     dataLoad = dataloader.DataIter(entity, relationShips)

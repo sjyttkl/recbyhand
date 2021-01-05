@@ -13,9 +13,11 @@ def auc(y_true,y_scores):
 def accuracy(y_true,y_scores):
     return sum(np.array(y_true)==np.array(y_scores))/len(y_true)
 
-
-
 class TopK_evaluate():
+
+    @staticmethod
+    def precision(pred,true):
+        sorted_pred = sorted(zip(pred, true))
 
     @staticmethod
     def hit_rate_for_item(t_items,p_items):
@@ -66,14 +68,16 @@ class TopK_evaluate():
             rr += TopK_evaluate.RR(test_user_item_list[user], user_recommadations[user])
         return rr / len(user_recommadations)
 
-a=[1,1,1,1,0,0]
-b=[0,1,1,1,1,1]
 
-t=[1,2,3,4,5,6,11,12,13,14]
-p=[2,3,7,8,9]
+if __name__ ==' __main__':
+    a=[1,1,1,1,0,0]
+    b=[0,1,1,1,1,1]
 
-print(precision(a,b))
-print(recall_score(a,b))
-print(roc_auc_score(a,b))
-print(accuracy(a,b))
+    t=[1,2,3,4,5,6,11,12,13,14]
+    p=[2,3,7,8,9]
+
+    print(precision(a,b))
+    print(recall_score(a,b))
+    print(roc_auc_score(a,b))
+    print(accuracy(a,b))
 

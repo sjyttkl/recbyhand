@@ -14,3 +14,15 @@ class FB15K_237():
     TRAIN=os.path.join(__BASE,'train.tsv')
     VALID=os.path.join(__BASE,'valid.tsv')
     TEST=os.path.join(__BASE,'test.tsv')
+
+
+class Ml_100K():
+    #下载地址：https://github.com/rexrex9/kb4recMovielensDataProcess
+    __BASE = os.path.join(os.path.split(os.path.realpath(__file__))[0], 'ml-100k')
+    KG=os.path.join(__BASE,'kg_index.tsv')
+    RATING=os.path.join(__BASE,'rating_index.tsv')
+
+
+class Model():
+    __BASE = os.path.join(os.path.split(os.path.realpath(__file__))[0], 'model')
+    C5_RIPPLE_NET = os.path.join(__BASE,'c5_ripple_net.model')

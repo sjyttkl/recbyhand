@@ -5,30 +5,52 @@ from tqdm import tqdm #产生进度条的库
 from utils import osUtils #自己的util库
 from data_set import filepaths #自己记录文件地址的py文件
 
-def readData(path):
-    entity_list,relation_list=set(),set()
+def readKgData(path):
+    entity_set,relation_set=set(),set()
     pairs=[]
     for h, r, t in tqdm(osUtils.readTriple(path)):
-        entity_list.add(h)
-        entity_list.add(t)
-        relation_list.add(r)
+        entity_set.add(h)
+        entity_set.add(t)
+        relation_set.add(r)
         pairs.append([h,r,t])
     #返回实体集合列表，关系集合列表，与三元组列表
-    return list(entity_list),list(relation_list),pairs
+    return list(entity_set),list(relation_set),pairs
+
+def readRecData(path,test_ratio=0.2):
+    user_set,item_set=set(),set()
+    pairs=[]
+    for u, i, r in tqdm(osUtils.readTriple(path)):
+        user_set.add(u)
+        item_set.add(i)
+        pairs.append((u,i,r))
+
+    test_set=random.sample(pairs,int(len(pairs)*test_ratio))
+    train_set=list(set(pairs)-set(test_set))
+
+    #返回用户集合列表，物品集合列表，与用户，物品，评分三元组列表
+    return list(user_set),list(item_set),train_set,test_set
+
+def testSetForTopKevaluation(testSet):
+    all_testItems = set()
+    user_items=dict()
+    for u,v,r in testSet:
+        all_testItems.add(v)
+        if u not in user_items:
+            user_items[u]={
+                'pos':set(),
+                'neg':set()
+            }
+        if r=='1':
+            user_items[u]['pos'].add(v)
+        else:
+            user_items[u]['neg'].add(v)
+    return all_testItems,user_items
 
 class DataIter():
 
     def __init__(self,entity_list,relation_list):
         self.entity_list=entity_list
         self.relation_list=relation_list
-
-    def iter(self,pairs,batchSize):
-        #传入三元组与batch size
-        for i in range(len(pairs)//batchSize):
-            dataset = random.sample(pairs, batchSize)
-            corrupted_datasets=self.__corrupt(dataset)
-            yield nd.array(dataset),nd.array(corrupted_datasets)
-            #每次迭代返回正例采样与负例采样得到的array
 
     def __corrupt(self,datasets):#负例采样方法
         corrupted_datasets = []
@@ -48,12 +70,28 @@ class DataIter():
             corrupted_datasets.append(corrupted_triple)
         return corrupted_datasets
 
-if __name__ == '__main__':
-    entity, relationShips, pairs = readData(filepaths.FB15K_237.TEST)
-    print(pairs[:5])
+    def iter(self,recPairs,kgPairs,recBatchSize,kgBatchSize):
+        #传入评分三元组，知识图谱三元组，batch size
+        for i in range(len(recPairs)//recBatchSize):
+            recDataSet = random.sample(recPairs,recBatchSize)
+            kgDataset = random.sample(kgPairs, kgBatchSize)
+            kgDataset_corrupted_datasets = self.__corrupt(kgDataset)
+            yield nd.array(recDataSet,dtype=int),nd.array(kgDataset,dtype=int),nd.array(kgDataset_corrupted_datasets,dtype=int)
+            #每次迭代返回一批量的评分三元组，以及知识图谱正例采样与负例采样得到的array
 
-    dataLoader = DataIter(entity,relationShips)
-    for datas in dataLoader.iter(pairs,batchSize=2):
-        print(datas)
-        import sys
-        sys.exit()
+if __name__ == '__main__':
+    #entity, relationShips, kgPairs = readKgData(filepaths.Ml_100K.KG)
+    users, items, train_set,test_set = readRecData(filepaths.Ml_100K.RATING)
+    #print(kgPairs[:5])
+    #print(recParis[:5])
+
+    all_testItems,topKtestSet = testSetForTopKevaluation(test_set)
+    print(topKtestSet)
+    # for user in topKtestSet:
+    #     itemList=[[user,item] for item in all_testItems]
+    #     print(itemList)
+    # dataLoader = DataIter(entity,relationShips)
+    # for datas in dataLoader.iter(train_set,kgPairs,recBatchSize=3,kgBatchSize=2):
+    #     print(datas)
+    #     import sys
+    #     sys.exit()
