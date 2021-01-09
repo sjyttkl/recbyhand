@@ -1,4 +1,4 @@
-from sklearn.metrics import roc_auc_score,precision_score,recall_score
+from sklearn.metrics import roc_auc_score,precision_score,recall_score,accuracy_score
 import numpy as np
 
 def precision(y_true,y_pred):
@@ -8,10 +8,10 @@ def recall(y_true,y_pred):
     return recall_score(y_true,y_pred)
 
 def auc(y_true,y_scores):
-    return roc_auc_score(y_true=y_true, y_score=y_scores)
+    return roc_auc_score(y_true,y_scores)
 
 def accuracy(y_true,y_scores):
-    return sum(np.array(y_true)==np.array(y_scores))/len(y_true)
+    return accuracy_score(y_true,y_scores)
 
 class TopK_evaluate():
 

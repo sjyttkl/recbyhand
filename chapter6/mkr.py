@@ -2,7 +2,6 @@ from mxnet import nd,autograd,gluon
 from mxnet.gluon import nn
 import mxnet as mx
 import numpy as np
-from utils import mxnetUtils #自己的util库
 from utils import evaluate #自己的测试库
 from chapter6 import dataloader #自己建立的读取数据的py文件
 from data_set import filepaths as fp #自己记录文件地址的py文件
@@ -125,13 +124,15 @@ class MKR(nn.Sequential):
         kg_loss = sum(self.__hinge_loss(kg_pos,kg_neg))
         return rec_loss+kg_loss
 
+#预测
 def doEvaluation(net,testSet):
     pred = net.do_predict(nd.array(testSet))
     y_true = [int(t[2]) for t in testSet]
     predictions = [1 if i >= 0.5 else 0 for i in pred]
     p = evaluate.precision(y_true=y_true, y_pred=predictions)
     r = evaluate.recall(y_true=y_true, y_pred=predictions)
-    return p,r
+    acc = evaluate.accuracy_score(y_true,y_pred=predictions)
+    return p,r,acc
 
 def train(net,dataLoad,recPairs,kgPairs,testSet,epochs=5,lr=0.001,batchSize=1024):
     from tqdm import tqdm
@@ -145,8 +146,8 @@ def train(net,dataLoad,recPairs,kgPairs,testSet,epochs=5,lr=0.001,batchSize=1024
             trainer.step(batchSize)
             l+=sum(loss).asscalar()
         print("Epoch {}, average loss:{}".format(e,round(l/len(recPairs),3)))
-        p,r=doEvaluation(net,testSet)
-        print("p:{},r:{}".format(round(p,3),round(r,3)))
+        p, r, acc = doEvaluation(net, testSet)
+        print("p:{},r:{},acc:{}".format(round(p, 3), round(r, 3), round(acc, 3)))
 
 
 
