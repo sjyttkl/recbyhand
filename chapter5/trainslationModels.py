@@ -136,12 +136,13 @@ def train(net,dataLoad,pairs,epochs=20,lr=0.01,batchSize=1024):
             net.batch_norm()
             l+=sum(loss).asscalar()
         print("Epoch {}, average loss:{}".format(e,l/len(pairs)))
-
+    return net
 
 if __name__ == '__main__':
     entity, relationShips, pairs = dataloader.readData(filepaths.FB15K_237.TEST)
     net=TransH(len(entity),len(relationShips))
     net.collect_params().initialize(mx.init.Xavier())
-
     dataLoad = dataloader.DataIter(entity, relationShips)
-    train(net,dataLoad,pairs)
+    net= train(net,dataLoad,pairs,epochs=20)
+
+

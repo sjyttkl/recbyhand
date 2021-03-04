@@ -13,7 +13,7 @@ def __generateTrainningDate(eid2index,rid2index,opath,path):
             f.write(eid2index[h]+'\t'+rid2index[r]+'\t'+eid2index[t]+'\n')
 
 def processFBDate():
-    entitys,relations=set(),set()
+    entitys, relations = set(), set()
 
     __processEntitysAndRelationSets(entitys, relations, filepaths.FB15K_237.O_TRAIN)
     __processEntitysAndRelationSets(entitys, relations, filepaths.FB15K_237.O_TEST)
@@ -22,7 +22,7 @@ def processFBDate():
     eid2index=[(eid,index) for index,eid in enumerate(entitys)]
     rid2index=[(rid,index) for index,rid in enumerate(relations)]
 
-    eid2indexDict,rid2indexDict=dict(),dict()
+    eid2indexDict, rid2indexDict = dict(), dict()
 
     with open(filepaths.FB15K_237.EID2INDEX,'w+') as f:
         for eid,index in eid2index:

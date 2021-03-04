@@ -6,23 +6,25 @@ from utils import osUtils #自己的util库
 from data_set import filepaths #自己记录文件地址的py文件
 
 def readKgData(path):
+    print('读取知识图谱三元组...')
     entity_set,relation_set=set(),set()
     pairs=[]
     for h, r, t in tqdm(osUtils.readTriple(path)):
-        entity_set.add(h)
-        entity_set.add(t)
-        relation_set.add(r)
-        pairs.append([h,r,t])
+        entity_set.add(int(h))
+        entity_set.add(int(t))
+        relation_set.add(int(r))
+        pairs.append([int(h),int(r),int(t)])
     #返回实体集合列表，关系集合列表，与三元组列表
     return list(entity_set),list(relation_set),pairs
 
 def readRecData(path,test_ratio=0.2):
+    print('读取用户评分三元组...')
     user_set,item_set=set(),set()
     pairs=[]
     for u, i, r in tqdm(osUtils.readTriple(path)):
-        user_set.add(u)
-        item_set.add(i)
-        pairs.append((u,i,r))
+        user_set.add(int(u))
+        item_set.add(int(i))
+        pairs.append((int(u),int(i),int(r)))
 
     test_set=random.sample(pairs,int(len(pairs)*test_ratio))
     train_set=list(set(pairs)-set(test_set))
@@ -30,7 +32,7 @@ def readRecData(path,test_ratio=0.2):
     #返回用户集合列表，物品集合列表，与用户，物品，评分三元组列表
     return list(user_set),list(item_set),train_set,test_set
 
-def testSetForTopKevaluation(testSet):
+def setForTopKevaluation(testSet):
     all_testItems = set()
     user_items=dict()
     for u,v,r in testSet:
@@ -80,6 +82,6 @@ class DataIter():
             #每次迭代返回一批量的评分三元组，以及知识图谱正例采样与负例采样得到的array
 
 if __name__ == '__main__':
-    users, items, train_set,test_set = readRecData(filepaths.Ml_100K.RATING)
-    all_testItems,topKtestSet = testSetForTopKevaluation(test_set)
+    users, items, train_set, test_set = readRecData(filepaths.Ml_100K.RATING)
+    all_testItems, topKtestSet = setForTopKevaluation(test_set)
     print(topKtestSet)

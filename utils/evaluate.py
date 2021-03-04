@@ -16,8 +16,16 @@ def accuracy(y_true,y_scores):
 class TopK_evaluate():
 
     @staticmethod
-    def precision(pred,true):
-        sorted_pred = sorted(zip(pred, true))
+    def precisionAndRecall(pred,t_pos,t_neg):
+        TP=len(set(pred)&set(t_pos))
+        FP=len(set(pred)&set(t_neg))
+        all_pos=len(pred)
+        all_recall=len(t_pos)
+        p=TP/(TP+FP) if TP+FP>0 else None
+        p_full=TP/all_pos
+        r=TP/all_recall if all_recall>0 else None
+        return p,p_full,r
+
 
     @staticmethod
     def hit_rate_for_item(t_items,p_items):
